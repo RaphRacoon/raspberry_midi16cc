@@ -77,8 +77,10 @@ if ! grep -q "@audio.*rtprio" /etc/security/limits.conf; then
 fi
 
 # Paramètre kernel realtime
-if ! grep -q "sched_rt_runtime_us" /etc/sysctl.conf; then
-    echo "kernel.sched_rt_runtime_us = -1" | sudo tee -a /etc/sysctl.conf > /dev/null
+SYSCTL_CONF="/etc/sysctl.conf"
+[ ! -f "$SYSCTL_CONF" ] && sudo touch "$SYSCTL_CONF"
+if ! grep -q "sched_rt_runtime_us" "$SYSCTL_CONF"; then
+    echo "kernel.sched_rt_runtime_us = -1" | sudo tee -a "$SYSCTL_CONF" > /dev/null
 fi
 
 # Service systemd
