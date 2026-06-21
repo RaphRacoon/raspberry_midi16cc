@@ -10,6 +10,9 @@ ExecStart=/home/granular/raspberry_midi16cc/scripts/start.sh
 Restart=on-failure
 RestartSec=10
 Environment=JACK_NO_AUDIO_RESERVATION=1
+LimitRTPRIO=95
+LimitMEMLOCK=infinity
+Nice=-10
 
 [Install]
 WantedBy=multi-user.target

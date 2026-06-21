@@ -7,7 +7,7 @@ PATCH="$PATCH_DIR/granular.pd"
 
 # Paramètres JACK optimisés Pi Zero (latence ~23ms, stable)
 JACK_RATE=48000
-JACK_PERIOD=2048
+JACK_PERIOD=4096
 JACK_NPERIODS=2
 
 # Détecter automatiquement la carte audio (prend la première carte non HDMI)
