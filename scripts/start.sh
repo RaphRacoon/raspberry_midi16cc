@@ -11,7 +11,7 @@ JACK_PERIOD=1024
 JACK_NPERIODS=2
 
 # Détecter automatiquement la carte audio (prend la première carte non HDMI)
-JACK_DEVICE=$(aplay -l 2>/dev/null | grep "^card" | grep -v "HDMI\|hdmi" | head -1 | awk '{print "hw:"$2}' | tr -d ',:')
+JACK_DEVICE=$(aplay -l 2>/dev/null | grep "^card" | grep -v "HDMI\|hdmi" | head -1 | awk '{gsub(/[,:]/, "", $2); print "hw:"$2}')
 JACK_DEVICE="${JACK_DEVICE:-hw:0}"
 
 echo "=== Démarrage Granular Noise ==="
