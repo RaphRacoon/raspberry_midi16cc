@@ -48,39 +48,39 @@ def midi_input():
 
 # ── BUFFER MANAGER ──────────────────────────────────────────────────────────
 def buffer_manager():
+    # tabwrite~ vanilla Pd: 1 signal inlet, starts writing from 0.
+    # CC37 > 63 → start recording (bang tabwrite~), CC36 > 63 → freeze (stop).
     p = Patch()
     table    = p.add("#X obj 10 10 table grain-buf 88200;")
-    r_rec    = p.add("#X obj 10 60 r record-trig;")
-    scale    = p.add("#X obj 10 90 * 0.007874;")
-    gt       = p.add("#X obj 10 120 > 63;")
-    sel      = p.add("#X obj 10 150 sel 1;")
-    metro    = p.add("#X obj 10 180 metro 30;")
-    f_idx    = p.add("#X obj 10 210 f 0;")
-    plus1    = p.add("#X obj 10 240 + 1;")
-    mod      = p.add("#X obj 10 270 mod 88200;")
-    adc      = p.add("#X obj 10 310 adc~;")
-    tw       = p.add("#X obj 10 340 tabwrite~ grain-buf;")
-    r_freeze = p.add("#X obj 10 400 r freeze;")
-    sf       = p.add("#X obj 10 430 * 0.007874;")
-    gf       = p.add("#X obj 10 460 > 63;")
-    sef      = p.add("#X obj 10 490 sel 1;")
-    stop     = p.add("#X msg 10 520 stop;")
+    adc      = p.add("#X obj 10 60 adc~;")
+    tw       = p.add("#X obj 10 90 tabwrite~ grain-buf;")
 
-    p.connect(r_rec, 0, scale, 0)
-    p.connect(scale, 0, gt, 0)
-    p.connect(gt, 0, sel, 0)
-    p.connect(sel, 0, metro, 0)
-    p.connect(metro, 0, f_idx, 0)
-    p.connect(f_idx, 0, plus1, 0)
-    p.connect(plus1, 0, mod, 0)
-    p.connect(mod, 0, f_idx, 1)
-    p.connect(mod, 0, tw, 1)
+    # record trigger: CC37 > 63 sends bang to tabwrite~
+    r_rec    = p.add("#X obj 10 150 r record-trig;")
+    sc_rec   = p.add("#X obj 10 180 * 0.007874;")
+    gt_rec   = p.add("#X obj 10 210 > 63;")
+    sel_rec  = p.add("#X obj 10 240 sel 1;")
+    bang_rec = p.add("#X msg 10 270 bang;")   # bang starts tabwrite~
+
+    # freeze: CC36 > 63 sends stop to tabwrite~
+    r_freeze = p.add("#X obj 10 330 r freeze;")
+    sc_fr    = p.add("#X obj 10 360 * 0.007874;")
+    gt_fr    = p.add("#X obj 10 390 > 63;")
+    sel_fr   = p.add("#X obj 10 420 sel 1;")
+    stop_msg = p.add("#X msg 10 450 stop;")
+
     p.connect(adc, 0, tw, 0)
-    p.connect(r_freeze, 0, sf, 0)
-    p.connect(sf, 0, gf, 0)
-    p.connect(gf, 0, sef, 0)
-    p.connect(sef, 0, stop, 0)
-    p.connect(stop, 0, metro, 0)
+    p.connect(r_rec, 0, sc_rec, 0)
+    p.connect(sc_rec, 0, gt_rec, 0)
+    p.connect(gt_rec, 0, sel_rec, 0)
+    p.connect(sel_rec, 0, bang_rec, 0)
+    p.connect(bang_rec, 0, tw, 0)   # bang triggers recording
+
+    p.connect(r_freeze, 0, sc_fr, 0)
+    p.connect(sc_fr, 0, gt_fr, 0)
+    p.connect(gt_fr, 0, sel_fr, 0)
+    p.connect(sel_fr, 0, stop_msg, 0)
+    p.connect(stop_msg, 0, tw, 0)   # stop message halts tabwrite~
     return p.render()
 
 
