@@ -423,8 +423,8 @@
 #X obj 10 460 + 1;
 #X obj 10 490 *~;
 #X obj 80 490 *~;
-#X obj 10 520 tanh~;
-#X obj 80 520 tanh~;
+#X obj 10 520 expr~ tanh($v1);
+#X obj 80 520 expr~ tanh($v1);
 #X obj 10 550 r master-vol;
 #X obj 10 580 * 0.007874;
 #X obj 10 610 line~;
