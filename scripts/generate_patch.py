@@ -105,11 +105,9 @@ def scheduler():
     sc_den   = p.add("#X obj 10 40 * 0.007874;")
     expr_int = p.add("#X obj 10 70 expr max(10\\, 1000 / (($f1 * 100) + 1));")
     metro    = p.add("#X obj 10 100 metro 200;")
-    trig4    = p.add("#X obj 10 130 t b b b b;")
+    trig4    = p.add("#X obj 10 130 t b b;")
     s1 = p.add("#X obj 10 170 s trig-1;")
     s2 = p.add("#X obj 90 170 s trig-2;")
-    s3 = p.add("#X obj 170 170 s trig-3;")
-    s4 = p.add("#X obj 250 170 s trig-4;")
 
     # scaled params sent to all voices via named sends
     params = [
@@ -134,8 +132,6 @@ def scheduler():
     p.connect(metro, 0, trig4, 0)
     p.connect(trig4, 0, s1, 0)
     p.connect(trig4, 1, s2, 0)
-    p.connect(trig4, 2, s3, 0)
-    p.connect(trig4, 3, s4, 0)
     return p.render()
 
 
@@ -233,28 +229,16 @@ def mixer_fx():
     p = Patch()
 
     # receive 4 stereo voice outputs and sum them
-    voices_L = [p.add(f"#X obj {10+i*80} 10 r~ vout{i+1}-L;") for i in range(4)]
-    voices_R = [p.add(f"#X obj {10+i*80} 40 r~ vout{i+1}-R;") for i in range(4)]
+    voices_L = [p.add(f"#X obj {10+i*80} 10 r~ vout{i+1}-L;") for i in range(2)]
+    voices_R = [p.add(f"#X obj {10+i*80} 40 r~ vout{i+1}-R;") for i in range(2)]
 
-    sum1L = p.add("#X obj 10 80 +~;")
-    sum2L = p.add("#X obj 10 110 +~;")
-    sumL  = p.add("#X obj 10 140 +~;")
-    sum1R = p.add("#X obj 200 80 +~;")
-    sum2R = p.add("#X obj 200 110 +~;")
-    sumR  = p.add("#X obj 200 140 +~;")
+    sumL  = p.add("#X obj 10 80 +~;")
+    sumR  = p.add("#X obj 200 80 +~;")
 
-    p.connect(voices_L[0], 0, sum1L, 0)
-    p.connect(voices_L[1], 0, sum1L, 1)
-    p.connect(voices_L[2], 0, sum2L, 0)
-    p.connect(voices_L[3], 0, sum2L, 1)
-    p.connect(sum1L, 0, sumL, 0)
-    p.connect(sum2L, 0, sumL, 1)
-    p.connect(voices_R[0], 0, sum1R, 0)
-    p.connect(voices_R[1], 0, sum1R, 1)
-    p.connect(voices_R[2], 0, sum2R, 0)
-    p.connect(voices_R[3], 0, sum2R, 1)
-    p.connect(sum1R, 0, sumR, 0)
-    p.connect(sum2R, 0, sumR, 1)
+    p.connect(voices_L[0], 0, sumL, 0)
+    p.connect(voices_L[1], 0, sumL, 1)
+    p.connect(voices_R[0], 0, sumR, 0)
+    p.connect(voices_R[1], 0, sumR, 1)
 
     # filter: lop~ (1-pole lowpass) controlled by CC34
     r_fc   = p.add("#X obj 10 190 r filter-freq;")
@@ -315,8 +299,6 @@ def generate():
         ("SCHEDULER",     20, 120, scheduler),
         ("VOICE-1",       20, 160, lambda: voice(1)),
         ("VOICE-2",       20, 200, lambda: voice(2)),
-        ("VOICE-3",       20, 240, lambda: voice(3)),
-        ("VOICE-4",       20, 280, lambda: voice(4)),
         ("MIXER-FX",      20, 320, mixer_fx),
     ]
 
