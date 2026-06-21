@@ -32,7 +32,7 @@ class Patch:
 def midi_input():
     p = Patch()
     ctlin    = p.add("#X obj 10 30 ctlin;")
-    route    = p.add("#X obj 10 60 route 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40;")
+    route    = p.add("#X obj 10 60 route 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35;")
     sends = [
         "grain-size", "grain-density", "grain-pos", "grain-scatter",
         "grain-pitch", "grain-pitch-rnd", "grain-env", "grain-pan",

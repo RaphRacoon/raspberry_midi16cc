@@ -2,7 +2,7 @@
 #X text 10 5 GRANULAR NOISE - Pi Zero + RaspiAudio MIC+ - CC25-CC40;
 #N canvas 0 0 900 700 MIDI-INPUT 12;
 #X obj 10 30 ctlin;
-#X obj 10 60 route 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40;
+#X obj 10 60 route 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35;
 #X obj 10 100 s grain-size;
 #X obj 70 100 s grain-density;
 #X obj 130 100 s grain-pos;

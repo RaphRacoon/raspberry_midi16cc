@@ -32,7 +32,7 @@ jackd -R -d alsa \
     -r "$JACK_RATE" \
     -p "$JACK_PERIOD" \
     -n "$JACK_NPERIODS" \
-    -S \
+    -s \
     &
 JACK_PID=$!
 
