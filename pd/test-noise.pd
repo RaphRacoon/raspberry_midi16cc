@@ -1,0 +1,10 @@
+#N canvas 0 0 200 250 test-noise 12;
+#X obj 10 10 loadbang;
+#X msg 10 40 \;pd dsp 1;
+#X obj 10 80 noise~;
+#X obj 10 110 *~ 0.5;
+#X obj 10 140 dac~;
+#X connect 0 0 1 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 3 0 4 1;
