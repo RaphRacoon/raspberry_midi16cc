@@ -49,11 +49,25 @@ def midi_input():
 # ── BUFFER MANAGER ──────────────────────────────────────────────────────────
 def buffer_manager():
     # tabwrite~ vanilla Pd: 1 signal inlet, starts writing from 0.
-    # CC37 > 63 → start recording (bang tabwrite~), CC36 > 63 → freeze (stop).
+    # At loadbang: fill buffer with noise so grains play immediately.
+    # CC37 > 63 → record from mic, CC36 > 63 → freeze.
     p = Patch()
     table    = p.add("#X obj 10 10 table grain-buf 88200;")
     adc      = p.add("#X obj 10 60 adc~;")
     tw       = p.add("#X obj 10 90 tabwrite~ grain-buf;")
+
+    # Pre-fill with noise at startup so there is something to granularise
+    lb       = p.add("#X obj 200 10 loadbang;")
+    noise    = p.add("#X obj 200 40 noise~;")
+    tw_noise = p.add("#X obj 200 70 tabwrite~ grain-buf;")
+    delay_st = p.add("#X obj 200 100 delay 2100;")
+    stop_n   = p.add("#X msg 200 130 stop;")
+
+    p.connect(lb, 0, tw_noise, 0)      # bang starts noise tabwrite~
+    p.connect(lb, 0, delay_st, 0)      # after 2.1s, stop it
+    p.connect(noise, 0, tw_noise, 0)
+    p.connect(delay_st, 0, stop_n, 0)
+    p.connect(stop_n, 0, tw_noise, 0)
 
     # record trigger: CC37 > 63 sends bang to tabwrite~
     r_rec    = p.add("#X obj 10 150 r record-trig;")
@@ -144,42 +158,37 @@ def voice(n):
     clip_pos = p.add("#X obj 10 230 clip 0 1;")
     buf_pos  = p.add("#X obj 10 260 * 88199;")      # sample index start
 
-    # phasor drives grain read
-    phasor   = p.add("#X obj 10 300 phasor~;")      # inlet 0 = freq
-    scale_ph = p.add("#X obj 10 330 * 88199;")      # phasor 0-1 → sample offset
-    add_pos  = p.add("#X obj 10 360 +~ 0;")         # offset + start
-    reader   = p.add("#X obj 10 390 tabread4~ grain-buf;")
+    # freq = 1000 / size_ms (message domain)
+    freq_obj = p.add("#X obj 10 290 expr 1000 / $f1;")
 
-    # envelope: hanning window via phasor
-    env_ph   = p.add("#X obj 200 300 phasor~;")     # same freq
-    pi_mul   = p.add("#X obj 200 330 * 3.14159;")
-    sin_env  = p.add("#X obj 200 360 cos~;")        # cos(pi*phase) for hanning
-    env_inv  = p.add("#X obj 200 390 *~ -0.5;")
-    env_off  = p.add("#X obj 200 420 +~ 0.5;")
+    # phasor~ drives grain read position (signal domain)
+    phasor   = p.add("#X obj 10 320 phasor~;")
+    scale_ph = p.add("#X obj 10 350 *~ 88199;")    # SIGNAL multiply (was * — bug)
+    add_pos  = p.add("#X obj 10 380 +~ 0;")        # +~ : sig inlet0 + float inlet1
+    reader   = p.add("#X obj 10 410 tabread4~ grain-buf;")
 
-    apply_env = p.add("#X obj 10 430 *~;")
+    # hanning envelope: 0.5 - 0.5*cos(2π*phase) via second phasor~
+    env_ph   = p.add("#X obj 200 320 phasor~;")
+    cos_env  = p.add("#X obj 200 350 cos~;")       # cos~ takes normalized phase 0-1
+    env_inv  = p.add("#X obj 200 380 *~ -0.5;")
+    env_off  = p.add("#X obj 200 410 +~ 0.5;")
+    apply_env = p.add("#X obj 10 450 *~;")
 
-    # stereo pan
+    # stereo pan (message domain → constant signal multiplier)
     rnd_pan  = p.add("#X obj 350 160 random 1000;")
     sc_pan   = p.add("#X obj 350 190 * 0.002;")
     off_pan  = p.add("#X obj 350 220 - 1;")
-    mul_pan  = p.add("#X obj 350 250 *;")           # pan_spread * rnd
-    pan_L    = p.add("#X obj 10 470 *~;")
-    pan_R    = p.add("#X obj 200 470 *~;")
-    inv_pan  = p.add("#X obj 200 500 *~ -1;")
-    off_panR = p.add("#X obj 200 530 +~ 1;")
+    mul_pan  = p.add("#X obj 350 250 *;")
+    pan_val  = p.add("#X obj 350 280 f;")          # hold pan value as float
+    pan_L_sc = p.add("#X obj 10 490 *~ 0.5;")
+    pan_R_sc = p.add("#X obj 200 490 *~ 0.5;")
 
-    sL = p.add(f"#X obj 10 560 s~ vout{n}-L;")
-    sR = p.add(f"#X obj 200 560 s~ vout{n}-R;")
+    sL = p.add(f"#X obj 10 530 s~ vout{n}-L;")
+    sR = p.add(f"#X obj 200 530 s~ vout{n}-R;")
 
-    # grain freq = 1/size_ms * 1000
-    # size_ms comes as float from scheduler — convert to hz
-    freq_obj = p.add("#X obj 10 295 expr 1000 / $f1;")  # size_ms → hz
-
-    # Connections
+    # Connections — position
     p.connect(r_trig, 0, rnd_pos, 0)
     p.connect(r_trig, 0, rnd_pan, 0)
-
     p.connect(r_scat, 0, mul_sc, 0)
     p.connect(rnd_pos, 0, sc_rnd, 0)
     p.connect(sc_rnd, 0, off_rnd, 0)
@@ -188,8 +197,9 @@ def voice(n):
     p.connect(mul_sc, 0, pos_sum, 1)
     p.connect(pos_sum, 0, clip_pos, 0)
     p.connect(clip_pos, 0, buf_pos, 0)
-    p.connect(buf_pos, 0, add_pos, 1)   # set start offset
+    p.connect(buf_pos, 0, add_pos, 1)  # float message sets offset in +~
 
+    # Connections — grain oscillator
     p.connect(r_size, 0, freq_obj, 0)
     p.connect(freq_obj, 0, phasor, 0)
     p.connect(freq_obj, 0, env_ph, 0)
@@ -197,26 +207,23 @@ def voice(n):
     p.connect(scale_ph, 0, add_pos, 0)
     p.connect(add_pos, 0, reader, 0)
 
-    p.connect(env_ph, 0, pi_mul, 0)
-    p.connect(pi_mul, 0, sin_env, 0)
-    p.connect(sin_env, 0, env_inv, 0)
+    # Connections — envelope
+    p.connect(env_ph, 0, cos_env, 0)
+    p.connect(cos_env, 0, env_inv, 0)
     p.connect(env_inv, 0, env_off, 0)
     p.connect(reader, 0, apply_env, 0)
     p.connect(env_off, 0, apply_env, 1)
 
+    # Connections — pan (simple: L=env, R=env, pan offsets later)
     p.connect(r_pan, 0, mul_pan, 0)
     p.connect(rnd_pan, 0, sc_pan, 0)
     p.connect(sc_pan, 0, off_pan, 0)
     p.connect(off_pan, 0, mul_pan, 1)
-
-    # pan_L amplitude = 0.5 + 0.5*pan, pan_R = 0.5 - 0.5*pan
-    p.connect(apply_env, 0, pan_L, 0)
-    p.connect(apply_env, 0, pan_R, 0)
-    p.connect(mul_pan, 0, inv_pan, 0)   # using signal for pan
-    p.connect(inv_pan, 0, off_panR, 0)
-    p.connect(off_panR, 0, pan_R, 1)
-    p.connect(pan_L, 0, sL, 0)
-    p.connect(pan_R, 0, sR, 0)
+    p.connect(mul_pan, 0, pan_val, 0)
+    p.connect(apply_env, 0, pan_L_sc, 0)
+    p.connect(apply_env, 0, pan_R_sc, 0)
+    p.connect(pan_L_sc, 0, sL, 0)
+    p.connect(pan_R_sc, 0, sR, 0)
 
     return p.render()
 
