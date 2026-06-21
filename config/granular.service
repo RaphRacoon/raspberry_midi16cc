@@ -1,0 +1,14 @@
+[Unit]
+Description=Granular Noise Synthesizer
+After=sound.target
+
+[Service]
+Type=forking
+User=pi
+WorkingDirectory=/home/pi/raspberry_midi16cc
+ExecStart=/home/pi/raspberry_midi16cc/scripts/start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
