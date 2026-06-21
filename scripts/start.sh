@@ -5,14 +5,20 @@
 PATCH_DIR="$(dirname "$0")/../pd"
 PATCH="$PATCH_DIR/granular.pd"
 
-# Paramètres JACK optimisés Pi Zero (latence ~21ms, stable)
+# Paramètres JACK optimisés Pi Zero (latence ~23ms, stable)
 JACK_RATE=44100
-JACK_PERIOD=1024    # 2x512 trop risqué sur Zero, 1024 = ~23ms
+JACK_PERIOD=1024
 JACK_NPERIODS=2
-JACK_DEVICE="hw:0"
+
+# Détecter automatiquement la carte audio (prend la première carte non HDMI)
+JACK_DEVICE=$(aplay -l 2>/dev/null | grep "^card" | grep -v "HDMI\|hdmi" | head -1 | awk '{print "hw:"$2}' | tr -d ',')
+JACK_DEVICE="${JACK_DEVICE:-hw:0}"
 
 echo "=== Démarrage Granular Noise ==="
 echo "  Audio: $JACK_DEVICE @ ${JACK_RATE}Hz, période ${JACK_PERIOD}"
+
+# Requis en mode headless (pas de dbus/X11)
+export JACK_NO_AUDIO_RESERVATION=1
 
 # Tuer les instances existantes
 pkill jackd 2>/dev/null || true
