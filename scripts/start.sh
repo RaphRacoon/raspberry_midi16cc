@@ -5,7 +5,6 @@
 PATCH_DIR="$(dirname "$0")/../pd"
 PATCH="$PATCH_DIR/granular.pd"
 
-# Paramètres JACK optimisés Pi Zero (latence ~23ms, stable)
 JACK_RATE=48000
 JACK_PERIOD=4096
 JACK_NPERIODS=2
@@ -17,7 +16,6 @@ JACK_DEVICE="${JACK_DEVICE:-hw:0}"
 echo "=== Démarrage Granular Noise ==="
 echo "  Audio: $JACK_DEVICE @ ${JACK_RATE}Hz, période ${JACK_PERIOD}"
 
-# Requis en mode headless (pas de dbus/X11)
 export JACK_NO_AUDIO_RESERVATION=1
 
 # Tuer les instances existantes
@@ -36,51 +34,59 @@ jackd -R -d alsa \
     &
 JACK_PID=$!
 
-sleep 2
+sleep 3
 
-# Vérifier que JACK tourne
 if ! jack_lsp > /dev/null 2>&1; then
-    echo "ERREUR: JACK n'a pas démarré. Vérifie la config audio."
+    echo "ERREUR: JACK n'a pas démarré."
     exit 1
 fi
 
+echo "  Ports JACK disponibles:"
+jack_lsp
+
 # Bridge MIDI USB → JACK
 a2jmidid -e &
-A2J_PID=$!
-
 sleep 1
 
-echo "  MIDI bridge démarré"
-echo "  Ports MIDI disponibles:"
-aconnect -l 2>/dev/null | grep -v "^$" | head -20
+echo "  Ports MIDI:"
+aconnect -l 2>/dev/null | head -30
 
 # Démarrer Pure Data en mode headless
 pd -nogui \
    -jack \
    -alsamidi \
    -rt \
-   -audiobuf 50 \
+   -audiobuf 500 \
    -open "$PATCH" \
    &
 PD_PID=$!
 
 echo ""
 echo "=== Granular Noise actif ==="
-echo "  PD PID: $PD_PID"
-echo "  JACK PID: $JACK_PID"
-echo "  Ctrl+C pour arrêter"
+echo "  PD PID: $PD_PID | JACK PID: $JACK_PID"
 
-# Connecter le contrôleur MIDI automatiquement
-sleep 3
-# Cherche un périphérique MIDI USB et connecte-le à PD
-MIDI_CLIENT=$(aconnect -l 2>/dev/null | grep -i "midi\|controller\|usb" | head -1 | awk '{print $2}' | tr -d ':')
+# Attendre que PD soit prêt puis connecter ses ports aux sorties physiques
+sleep 5
+echo "  Connexion ports JACK..."
+jack_connect "Pure Data:output0" "system:playback_1" 2>/dev/null \
+    || jack_connect "pure_data:output0" "system:playback_1" 2>/dev/null \
+    || true
+jack_connect "Pure Data:output1" "system:playback_2" 2>/dev/null \
+    || jack_connect "pure_data:output1" "system:playback_2" 2>/dev/null \
+    || true
+
+echo "  Connexions JACK actives:"
+jack_lsp -c 2>/dev/null | grep -A1 "Pure\|pure_data\|system"
+
+# Connecter contrôleur MIDI
+MIDI_CLIENT=$(aconnect -l 2>/dev/null | grep -i "MIDI Controller" | head -1 | awk '{print $2}' | tr -d ':')
 if [ -n "$MIDI_CLIENT" ]; then
-    PD_CLIENT=$(aconnect -l 2>/dev/null | grep -i "pure\|pd" | head -1 | awk '{print $2}' | tr -d ':')
+    PD_CLIENT=$(aconnect -l 2>/dev/null | grep -i "pure\|pd" | grep -v "Through" | head -1 | awk '{print $2}' | tr -d ':')
     if [ -n "$PD_CLIENT" ]; then
         aconnect "$MIDI_CLIENT" "$PD_CLIENT" 2>/dev/null && echo "  MIDI connecté: $MIDI_CLIENT → $PD_CLIENT"
     fi
 fi
 
-# Attendre Ctrl+C
-trap "pkill -P $$ ; echo 'Arrêt.'" SIGINT SIGTERM
+echo "  Ctrl+C pour arrêter"
+trap "pkill jackd; pkill a2jmidid; pkill pd; echo 'Arrêt.'" SIGINT SIGTERM
 wait $PD_PID
