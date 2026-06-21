@@ -6,7 +6,7 @@ PATCH_DIR="$(dirname "$0")/../pd"
 PATCH="$PATCH_DIR/granular.pd"
 
 # Paramètres JACK optimisés Pi Zero (latence ~23ms, stable)
-JACK_RATE=44100
+JACK_RATE=48000
 JACK_PERIOD=2048
 JACK_NPERIODS=2
 
@@ -32,7 +32,7 @@ jackd -R -d alsa \
     -r "$JACK_RATE" \
     -p "$JACK_PERIOD" \
     -n "$JACK_NPERIODS" \
-    -s \
+    -S \
     &
 JACK_PID=$!
 

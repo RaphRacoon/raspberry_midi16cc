@@ -52,11 +52,11 @@ def buffer_manager():
     # At loadbang: fill buffer with noise so grains play immediately.
     # CC37 > 63 → record from mic, CC36 > 63 → freeze.
     p = Patch()
-    table    = p.add("#X obj 10 10 table grain-buf 88200;")
+    table    = p.add("#X obj 10 10 table grain-buf 96000;")
     adc      = p.add("#X obj 10 60 adc~;")
     tw       = p.add("#X obj 10 90 tabwrite~ grain-buf;")
 
-    # Pre-fill with noise at startup so there is something to granularise
+    # Pre-fill with noise at startup (buffer based on 48000Hz sample rate)
     lb       = p.add("#X obj 200 10 loadbang;")
     noise    = p.add("#X obj 200 40 noise~;")
     tw_noise = p.add("#X obj 200 70 tabwrite~ grain-buf;")
@@ -156,14 +156,14 @@ def voice(n):
     mul_sc   = p.add("#X obj 200 160 *;")           # scatter * random-1
     pos_sum  = p.add("#X obj 10 200 +;")            # pos + scatter
     clip_pos = p.add("#X obj 10 230 clip 0 1;")
-    buf_pos  = p.add("#X obj 10 260 * 88199;")      # sample index start
+    buf_pos  = p.add("#X obj 10 260 * 95999;")      # sample index start
 
     # freq = 1000 / size_ms (message domain)
     freq_obj = p.add("#X obj 10 290 expr 1000 / $f1;")
 
     # phasor~ drives grain read position (signal domain)
     phasor   = p.add("#X obj 10 320 phasor~;")
-    scale_ph = p.add("#X obj 10 350 *~ 88199;")    # SIGNAL multiply (was * — bug)
+    scale_ph = p.add("#X obj 10 350 *~ 95999;")    # SIGNAL multiply (was * — bug)
     add_pos  = p.add("#X obj 10 380 +~ 0;")        # +~ : sig inlet0 + float inlet1
     reader   = p.add("#X obj 10 410 tabread4~ grain-buf;")
 
